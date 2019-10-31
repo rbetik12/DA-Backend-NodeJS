@@ -5,8 +5,8 @@ import * as fs from 'fs';
 import {User} from './common/models/user.interface';
 import {Credentials} from './common/models/credentials.interface';
 
-const app: express.Application = express();
 
+const app: express.Application = express();
 app.use(bodyParser.json());
 app.use(function(req, res, next) {
     res.header("Access-Control-Allow-Origin", "*"); 
@@ -16,15 +16,60 @@ app.use(function(req, res, next) {
 
 const RSA_KEY = fs.readFileSync('key.pem');
 
+const http = require('http').Server(app);
+const io = require('socket.io')(http);
+const mysql = require('mysql');
+
 const users: User[] = [{
     name: 'Vitaliy',
-    about: 'llfdlewf',
+    about: 'Very interestin young man. Love to love and be loved',
     email: 'lol@gmail.com',
     gender: 'M',
     age: 19,
     interests: ['kek'],
     password: '123456'
 }];
+
+var pool = mysql.createPool({
+    connectionLimit: 100,
+    host: 'localhost',
+    user: 'root',
+    password: 'mysql',
+    database: 'readr',
+    debug: false
+});
+
+const documents: any = {};
+
+io.on("connection", (socket: any) => {
+    let previousId: any;
+    const safeJoin = (currentId: any) => {
+        socket.leave(previousId);
+        socket.join(currentId);
+        previousId = currentId;
+    };
+
+    socket.on("getDoc", (docId: any) => {
+        safeJoin(docId);
+        socket.emit("document", documents[docId]);
+    });
+
+    socket.on("addDoc", (doc: any) => {
+        documents[doc.id] = doc;
+        safeJoin(doc.id);
+        io.emit("documents", Object.keys(documents));
+        socket.emit("document", doc);
+    });
+
+    socket.on("editDoc", (doc: any) => {
+        documents[doc.id] = doc;
+        socket.to(doc.id).emit("document", doc);
+    });
+
+    io.emit("documents", Object.keys(documents));
+});
+
+http.listen(5000);
 
 export function findUser(info: Credentials): User | null {
     for (let user of users) {
