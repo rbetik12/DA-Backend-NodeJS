@@ -1,7 +1,9 @@
 import express = require('express');
 import bodyParser = require('body-parser');
 import * as jwt from 'jsonwebtoken';
-import * as fs from 'fs'
+import * as fs from 'fs';
+import {User} from './common/models/user.interface';
+import {Credentials} from './common/models/credentials.interface';
 
 const app: express.Application = express();
 
@@ -14,22 +16,6 @@ app.use(function(req, res, next) {
 
 const RSA_KEY = fs.readFileSync('key.pem');
 
-interface User {
-    name: string;
-    email: string;
-    gender: string;
-    age: number;
-    about: string;
-    interests: string[];
-
-    [key: string]: any;
-}
-
-interface EmailPass {
-    email: string;
-    password: string;
-}
-
 const users: User[] = [{
     name: 'Vitaliy',
     about: 'llfdlewf',
@@ -40,7 +26,7 @@ const users: User[] = [{
     password: '123456'
 }];
 
-export function findUser(info: EmailPass): User | null {
+export function findUser(info: Credentials): User | null {
     for (let user of users) {
         console.log(user.email, ' ', info.email);
         console.log(user.password, ' ', info.password);
@@ -59,7 +45,7 @@ export function register(req: any, res: any) {
 }
 
 export function login(req: any, res: any) {
-    const credentials: EmailPass = req.body.loginInfo;
+    const credentials: Credentials = req.body.loginInfo;
     console.table(credentials);
     const h = 2;
     if (findUser(credentials)) {
