@@ -2,17 +2,18 @@ import express = require('express');
 import bodyParser = require('body-parser');
 import * as jwt from 'jsonwebtoken';
 import * as fs from 'fs';
-import {User} from './common/models/user.interface';
-import {Credentials} from './common/models/credentials.interface';
+import { User } from './common/models/user.interface';
+import { Credentials } from './common/models/credentials.interface';
+import { MessageModel } from './common/models/message-model.interface';
 
 
 const app: express.Application = express();
 app.use(bodyParser.json());
-app.use(function(req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*"); 
+app.use(function (req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
-  });
+});
 
 const RSA_KEY = fs.readFileSync('key.pem');
 
@@ -41,35 +42,24 @@ var pool = mysql.createPool({
 
 const documents: any = {};
 
+const messages: MessageModel[] = [];
+const IP = "192.168.1.105";
 io.on("connection", (socket: any) => {
-    let previousId: any;
-    const safeJoin = (currentId: any) => {
-        socket.leave(previousId);
-        socket.join(currentId);
-        previousId = currentId;
-    };
+    let userID: number;
+    socket.emit("join", messages);
 
-    socket.on("getDoc", (docId: any) => {
-        safeJoin(docId);
-        socket.emit("document", documents[docId]);
+    socket.on("newMessage", (message: MessageModel) => {
+        messages.push(message);
+        io.emit("newMessage", message);
     });
 
-    socket.on("addDoc", (doc: any) => {
-        documents[doc.id] = doc;
-        safeJoin(doc.id);
-        io.emit("documents", Object.keys(documents));
-        socket.emit("document", doc);
+    socket.on("join", (id: number) => {
+        userID = id;
+        console.log(id);
     });
-
-    socket.on("editDoc", (doc: any) => {
-        documents[doc.id] = doc;
-        socket.to(doc.id).emit("document", doc);
-    });
-
-    io.emit("documents", Object.keys(documents));
 });
 
-http.listen(5000);
+http.listen(5000, IP);
 
 export function findUser(info: Credentials): User | null {
     for (let user of users) {
@@ -86,7 +76,7 @@ export function register(req: any, res: any) {
     const user: User = req.body.userInfo;
     console.table(user);
     users.push(user);
-    res.status(200).json({status: 'fine'});
+    res.status(200).json({ status: 'fine' });
 }
 
 export function login(req: any, res: any) {
@@ -94,7 +84,7 @@ export function login(req: any, res: any) {
     console.table(credentials);
     const h = 2;
     if (findUser(credentials)) {
-        const jwtToken = jwt.sign({email: credentials.email}, RSA_KEY, {
+        const jwtToken = jwt.sign({ email: credentials.email }, RSA_KEY, {
             algorithm: 'RS256',
             expiresIn: '2 hours',
             subject: credentials.email,
@@ -102,7 +92,7 @@ export function login(req: any, res: any) {
         const currentTime = new Date();
         res.status(200).json({
             emailToken: jwtToken,
-            expiresIn: currentTime.setTime(currentTime.getTime() + (h*60*60*1000))
+            expiresIn: currentTime.setTime(currentTime.getTime() + (h * 60 * 60 * 1000))
         });
     }
     else {
@@ -114,7 +104,7 @@ app.route('/api/register').post(register);
 
 app.route('/api/login').post(login);
 
-app.listen(4000, () => {
+app.listen(4000, IP, () => {
     console.log("Server launched");
     console.table(users[0]);
 })
