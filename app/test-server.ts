@@ -4,6 +4,7 @@ import * as jwt from 'jsonwebtoken';
 import * as fs from 'fs';
 import {User} from './common/models/user.interface';
 import {Credentials} from './common/models/credentials.interface';
+import { MessageModel } from './common/models/message-model.interface';
 
 
 const app: express.Application = express();
@@ -39,33 +40,21 @@ const users: User[] = [{
 
 
 const documents: any = {};
+const messages: MessageModel[] = [];
 
 io.on("connection", (socket: any) => {
-    let previousId: any;
-    const safeJoin = (currentId: any) => {
-        socket.leave(previousId);
-        socket.join(currentId);
-        previousId = currentId;
-    };
+    let userID: number;
+    socket.emit("join", messages);
 
-    socket.on("getDoc", (docId: any) => {
-        safeJoin(docId);
-        socket.emit("document", documents[docId]);
+    socket.on("newMessage", (message: MessageModel) => {
+        messages.push(message);
+        io.emit("newMessage", message);
     });
 
-    socket.on("addDoc", (doc: any) => {
-        documents[doc.id] = doc;
-        safeJoin(doc.id);
-        io.emit("documents", Object.keys(documents));
-        socket.emit("document", doc);
+    socket.on("join", (id: number) => {
+        userID = id;
+        console.log(id);
     });
-
-    socket.on("editDoc", (doc: any) => {
-        documents[doc.id] = doc;
-        socket.to(doc.id).emit("document", doc);
-    });
-
-    io.emit("documents", Object.keys(documents));
 });
 
 http.listen(5000);
