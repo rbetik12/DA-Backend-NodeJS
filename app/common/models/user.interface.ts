@@ -9,13 +9,3 @@ export interface User {
     
         [key: string]: any
 }
-
-const users: User[] = [{
-    name: 'Vitaliy',
-    about: 'llfdlewf',
-    email: 'lol@gmail.com',
-    gender: 'M',
-    age: 19,
-    interests: ['kek'],
-    password: '123456'
-}];
