@@ -18,7 +18,14 @@ const RSA_KEY = fs.readFileSync('key.pem');
 
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
-const mysql = require('mysql');
+const mongoClient = require('mongodb').MongoClient;
+const url = "mongodb://localhost:27017/readr";
+
+mongoClient.connect(url, (err: any, db: any) => {
+    if (err) throw err;
+    console.log("Database connected!");
+    db.close();
+  });
 
 const users: User[] = [{
     name: 'Vitaliy',
@@ -30,14 +37,6 @@ const users: User[] = [{
     password: '123456'
 }];
 
-var pool = mysql.createPool({
-    connectionLimit: 100,
-    host: 'localhost',
-    user: 'root',
-    password: 'mysql',
-    database: 'readr',
-    debug: false
-});
 
 const documents: any = {};
 
@@ -70,6 +69,7 @@ io.on("connection", (socket: any) => {
 });
 
 http.listen(5000);
+
 
 export function findUser(info: Credentials): User | null {
     for (let user of users) {

@@ -49,3 +49,5 @@ Thumbs.db
 /build
 /public
 server.js
+
+package-lock.json
