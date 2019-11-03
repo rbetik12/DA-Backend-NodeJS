@@ -45,11 +45,17 @@ const documents: any = {};
 const messages: MessageModel[] = [];
 const IP = "192.168.1.105";
 io.on("connection", (socket: any) => {
+    let userID: number;
     socket.emit("join", messages);
 
     socket.on("newMessage", (message: MessageModel) => {
         messages.push(message);
         io.emit("newMessage", message);
+    });
+
+    socket.on("join", (id: number) => {
+        userID = id;
+        console.log(id);
     });
 });
 
