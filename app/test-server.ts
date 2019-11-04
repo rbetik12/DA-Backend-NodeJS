@@ -22,11 +22,11 @@ const io = require('socket.io')(http);
 const mongoClient = require('mongodb').MongoClient;
 const url = "mongodb://localhost:27017/readr";
 
-mongoClient.connect(url, (err: any, db: any) => {
-    if (err) throw err;
-    console.log("Database connected!");
-    db.close();
-  });
+// mongoClient.connect(url, (err: any, db: any) => {
+//     if (err) throw err;
+//     console.log("Database connected!");
+//     db.close();
+//   });
 
 const users: User[] = [{
     name: 'Vitaliy',
@@ -43,6 +43,7 @@ const documents: any = {};
 const messages: MessageModel[] = [];
 
 io.on("connection", (socket: any) => {
+    console.log("connection");
     let userID: number;
     socket.emit("join", messages);
 
@@ -53,7 +54,7 @@ io.on("connection", (socket: any) => {
 
     socket.on("join", (id: number) => {
         userID = id;
-        console.log(id);
+        socket.emit("join", messages);
     });
 });
 
