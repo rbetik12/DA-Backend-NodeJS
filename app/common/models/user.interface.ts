@@ -1,11 +1,12 @@
 
 export interface User {
+    _id: string,
     name: string,
-        email: string,
-        gender: string,
-        age: number,
-        about: string,
-        interests: string[],
-    
-        [key: string]: any
+    email: string,
+    gender: string,
+    age: number,
+    about: string,
+    interests: string[],
+
+    password?: string
 }
