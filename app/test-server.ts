@@ -5,6 +5,9 @@ import * as fs from 'fs';
 import {User} from './common/models/user.interface';
 import {Credentials} from './common/models/credentials.interface';
 import { MessageModel } from './common/models/message-model.interface';
+import { MongoHelper } from './common/db/mongo.helper';
+import { resolve } from 'path';
+import { rejects } from 'assert';
 
 
 const app: express.Application = express();
@@ -19,16 +22,31 @@ const RSA_KEY = fs.readFileSync('key.pem');
 
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
-const mongoClient = require('mongodb').MongoClient;
 const url = "mongodb://localhost:27017/readr";
+import * as mongo from 'mongodb';
+let x: any;
 
-// mongoClient.connect(url, (err: any, db: any) => {
-//     if (err) throw err;
-//     console.log("Database connected!");
-//     db.close();
-//   });
+export async function getUsers(callback: any) {
+    await MongoHelper.connect(url);
+    return MongoHelper.client.db('readr').collection('users').find({}).toArray((err:any, items: any) =>{
+            if (err) {
+                express.response.status(500);
+                express.response.end();
+                console.error('Caught error', err);
+            } else {
+                callback(items);
+            }
+        });
+}
 
-const users: User[] = [{
+async function use() {
+    const client = await MongoHelper.connect(url);
+    const coll = await client.db('readr').collection('users').find({}).toArray();
+    return coll;
+}
+
+let users: User[] = [{
+    _id: "kek",
     name: 'Vitaliy',
     about: 'Very interestin young man. Love to love and be loved',
     email: 'lol@gmail.com',
@@ -37,7 +55,6 @@ const users: User[] = [{
     interests: ['kek'],
     password: '123456'
 }];
-
 
 const documents: any = {};
 const messages: MessageModel[] = [];
@@ -79,11 +96,14 @@ export function register(req: any, res: any) {
     res.status(200).json({status: 'fine'});
 }
 
-export function login(req: any, res: any) {
+export async function login(req: any, res: any) {
+    const client = await MongoHelper.connect(url);
+    const coll = await client.db('readr').collection('users').find({}).toArray();
+    console.table(coll);
     const credentials: Credentials = req.body.loginInfo;
     console.table(credentials);
     const h = 2;
-    if (findUser(credentials)) {
+    if (findUser(coll)) {
         const jwtToken = jwt.sign({email: credentials.email}, RSA_KEY, {
             algorithm: 'RS256',
             expiresIn: '2 hours',
@@ -104,7 +124,15 @@ app.route('/api/register').post(register);
 
 app.route('/api/login').post(login);
 
-app.listen(4000, () => {
+app.listen(4000, async () => {
     console.log("Server launched");
     console.table(users[0]);
+    try {
+        //await () => {}
+        //promise1.then();
+        // await MongoHelper.connect(url);
+        console.info(`Connected to Mongo!`);
+      } catch (err) {
+        console.error(`Unable to connect to Mongo!`, err);
+      }
 })
