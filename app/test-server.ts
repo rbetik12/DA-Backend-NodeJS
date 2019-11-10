@@ -75,7 +75,7 @@ io.on("connection", (socket: any) => {
     });
 });
 
-http.listen(5000);
+http.listen(5000, '192.168.1.106');
 
 
 export async function findUser(info: Credentials): Promise<User | null | String> {
@@ -120,7 +120,7 @@ export async function login(req: any, res: any) {
     //     }
     // }
     const foundUser = (await findUser(credentials).then((res) => { return res}))
-    if (!foundUser) {
+    if (foundUser) {
         const jwtToken = jwt.sign({email: credentials.email}, RSA_KEY, {
             algorithm: 'RS256',
             expiresIn: '2 hours',
@@ -141,7 +141,7 @@ app.route('/api/register').post(register);
 
 app.route('/api/login').post(login);
 
-app.listen(4000, async () => {
+app.listen(4000, '192.168.1.106', async () => {
     console.log("Server launched");
     console.table(users[0]);
     const credentials: Credentials = { email: "belozubov@niuitmo.ru",
