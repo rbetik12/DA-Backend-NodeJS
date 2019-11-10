@@ -78,32 +78,49 @@ io.on("connection", (socket: any) => {
 http.listen(5000);
 
 
-export function findUser(info: Credentials): User | null {
-    for (let user of users) {
+export async function findUser(info: Credentials): Promise<User | null | String> {
+    const client = await MongoHelper.connect(url);
+    const coll: User[] = await client.db('readr').collection('users').find({}).toArray();
+    //console.log(coll);
+    for (let user of coll) {
         console.log(user.email, ' ', info.email);
         console.log(user.password, ' ', info.password);
         if (user.email === info.email && user.password === info.password) {
+            user._id = user._id.toString();
             return user;
         }
     }
+    //return "naker idi";
     return null;
 }
 
-export function register(req: any, res: any) {
+export async function register(req: any, res: any) {
+    const client = await MongoHelper.connect(url);
+    const coll = await client.db('readr').collection('users');
     const user: User = req.body.userInfo;
+    coll.insertOne(user);
     console.table(user);
     users.push(user);
+
     res.status(200).json({status: 'fine'});
 }
 
 export async function login(req: any, res: any) {
-    const client = await MongoHelper.connect(url);
-    const coll = await client.db('readr').collection('users').find({}).toArray();
-    console.table(coll);
+    // let p = false;
+    
     const credentials: Credentials = req.body.loginInfo;
     console.table(credentials);
     const h = 2;
-    if (findUser(coll)) {
+
+    // for (let user of coll) {
+    //     console.log(user.email, ' ', credentials.email);
+    //     console.log(user.password, ' ', credentials.password);
+    //     if (user.email === credentials.email && user.password === credentials.password) {
+    //         p = true;
+    //     }
+    // }
+    const foundUser = (await findUser(credentials).then((res) => { return res}))
+    if (!foundUser) {
         const jwtToken = jwt.sign({email: credentials.email}, RSA_KEY, {
             algorithm: 'RS256',
             expiresIn: '2 hours',
@@ -127,10 +144,12 @@ app.route('/api/login').post(login);
 app.listen(4000, async () => {
     console.log("Server launched");
     console.table(users[0]);
+    const credentials: Credentials = { email: "belozubov@niuitmo.ru",
+password: "123456"}
+    const d = await findUser(credentials).then((res) => {return res});
+    console.table(d);
     try {
-        //await () => {}
-        //promise1.then();
-        // await MongoHelper.connect(url);
+        await MongoHelper.connect(url);
         console.info(`Connected to Mongo!`);
       } catch (err) {
         console.error(`Unable to connect to Mongo!`, err);
