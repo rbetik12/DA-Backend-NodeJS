@@ -113,6 +113,14 @@ export async function register(req: any, res: any) {
     res.status(200).json({status: 'fine'});
 }
 
+export async function editProfile(req: any, res: any){
+    const client = await MongoHelper.connect(url);
+    const coll = await client.db('readr').collection('users');
+    const user: User = req.body.user;
+    let userFromDB = await coll.findOne({_id: user._id});
+    console.table(userFromDB);
+}
+
 export async function login(req: any, res: any) {
     // let p = false;
     
@@ -145,6 +153,8 @@ export async function login(req: any, res: any) {
         res.status(404).end();
     }
 }
+
+app.route('/api/profile').post(editProfile);
 
 app.route('/api/register').post(register);
 
