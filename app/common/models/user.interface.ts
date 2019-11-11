@@ -1,3 +1,4 @@
+import { Photo } from "./photo.iterface";
 
 export interface User {
     _id: string,
@@ -7,7 +8,7 @@ export interface User {
     age: number,
     about: string,
     interests: string[],
-    images?: string[],
+    images?: Photo[],
 
     password?: string,
     [key: string]: any

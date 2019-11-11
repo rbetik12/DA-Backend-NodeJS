@@ -118,8 +118,12 @@ export async function editProfile(req: any, res: any){
     const coll = await client.db('readr').collection('users');
     const user: User = req.body.user;
     const id = new mongo.ObjectID(user._id);
-    let userFromDB = await coll.findOne({_id: id});
+    const userFromDB = await coll.findOneAndUpdate({_id: id}, user);
+    //userFromDB = user;
+
     console.table(userFromDB);
+
+    res.status(200);
 }
 
 export async function login(req: any, res: any) {
