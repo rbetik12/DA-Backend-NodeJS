@@ -83,7 +83,7 @@ io.on("connection", async (socket: any) => {
     });
 });
 
-http.listen(5000, '192.168.1.106');
+http.listen(5000);
 
 
 export async function findUser(info: Credentials): Promise<User | null | String> {
@@ -117,7 +117,8 @@ export async function editProfile(req: any, res: any){
     const client = await MongoHelper.connect(url);
     const coll = await client.db('readr').collection('users');
     const user: User = req.body.user;
-    let userFromDB = await coll.findOne({_id: user._id});
+    const id = new mongo.ObjectID(user._id);
+    let userFromDB = await coll.findOne({_id: id});
     console.table(userFromDB);
 }
 
@@ -160,7 +161,7 @@ app.route('/api/register').post(register);
 
 app.route('/api/login').post(login);
 
-app.listen(4000, '192.168.1.106', async () => {
+app.listen(4000, async () => {
     console.log("Server launched");
     console.table(users[0]);
     const credentials: Credentials = { email: "belozubov@niuitmo.ru",
