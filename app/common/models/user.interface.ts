@@ -7,7 +7,7 @@ export interface User {
     age: number,
     about: string,
     interests: string[],
-    images: string[],
+    images?: string[],
 
     password?: string,
     [key: string]: any
