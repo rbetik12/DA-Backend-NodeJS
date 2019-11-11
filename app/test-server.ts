@@ -59,19 +59,27 @@ let users: User[] = [{
 const documents: any = {};
 const messages: MessageModel[] = [];
 
-io.on("connection", (socket: any) => {
+io.on("connection", async (socket: any) => {
+    const client = await MongoHelper.connect(url);
+    const coll = await client.db('readr').collection('messages');
+    const mssgs = await coll.find({}).toArray();
+    console.table(mssgs);
     console.log("connection");
     let userID: number;
-    socket.emit("join", messages);
-
+    socket.emit("join", mssgs);
     socket.on("newMessage", (message: MessageModel) => {
+        coll.insertOne(message);
+        console.log("added message");
+        console.table(message);
         messages.push(message);
         io.emit("newMessage", message);
     });
 
     socket.on("join", (id: number) => {
+        const mssgs = coll.find({}).toArray();
+        console.table("get messages");
         userID = id;
-        socket.emit("join", messages);
+        socket.emit("join", mssgs);
     });
 });
 
@@ -129,7 +137,8 @@ export async function login(req: any, res: any) {
         const currentTime = new Date();
         res.status(200).json({
             emailToken: jwtToken,
-            expiresIn: currentTime.setTime(currentTime.getTime() + (h*60*60*1000))
+            expiresIn: currentTime.setTime(currentTime.getTime() + (h*60*60*1000)),
+            credentials: foundUser
         });
     }
     else {
