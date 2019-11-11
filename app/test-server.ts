@@ -62,18 +62,22 @@ const messages: MessageModel[] = [];
 io.on("connection", async (socket: any) => {
     const client = await MongoHelper.connect(url);
     const coll = await client.db('readr').collection('messages');
-    const mssgs = coll.find({}).toArray();
+    const mssgs = await coll.find({}).toArray();
+    console.table(mssgs);
     console.log("connection");
     let userID: number;
     socket.emit("join", mssgs);
     socket.on("newMessage", (message: MessageModel) => {
         coll.insertOne(message);
+        console.log("added message");
+        console.table(message);
         messages.push(message);
         io.emit("newMessage", message);
     });
 
     socket.on("join", (id: number) => {
         const mssgs = coll.find({}).toArray();
+        console.table("get messages");
         userID = id;
         socket.emit("join", mssgs);
     });
