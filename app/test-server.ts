@@ -25,7 +25,6 @@ const io = require('socket.io')(http);
 const url = "mongodb://localhost:27017/readr";
 import * as mongo from 'mongodb';
 let x: any;
-const IP = '192.168.1.105';
 
 export async function getUsers(callback: any) {
     await MongoHelper.connect(url);
@@ -84,13 +83,12 @@ io.on("connection", async (socket: any) => {
     });
 });
 
-http.listen(5000, IP);
+http.listen(5000);
 
 
 export async function findUser(info: Credentials): Promise<User | null | String> {
     const client = await MongoHelper.connect(url);
     const coll: User[] = await client.db('readr').collection('users').find({}).toArray();
-    //console.log(coll);
     for (let user of coll) {
         console.log(user.email, ' ', info.email);
         console.log(user.password, ' ', info.password);
@@ -99,7 +97,6 @@ export async function findUser(info: Credentials): Promise<User | null | String>
             return user;
         }
     }
-    //return "naker idi";
     return null;
 }
 
@@ -120,27 +117,16 @@ export async function editProfile(req: any, res: any){
     const user: User = req.body.user;
     const id = new mongo.ObjectID(user._id);
     const userFromDB = await coll.findOneAndUpdate({_id: id}, user);
-    //userFromDB = user;
-
     console.table(userFromDB);
 
     res.status(200);
 }
 
 export async function login(req: any, res: any) {
-    // let p = false;
-    
     const credentials: Credentials = req.body.loginInfo;
     console.table(credentials);
     const h = 2;
 
-    // for (let user of coll) {
-    //     console.log(user.email, ' ', credentials.email);
-    //     console.log(user.password, ' ', credentials.password);
-    //     if (user.email === credentials.email && user.password === credentials.password) {
-    //         p = true;
-    //     }
-    // }
     const foundUser = (await findUser(credentials).then((res) => { return res}))
     if (foundUser) {
         const jwtToken = jwt.sign({email: credentials.email}, RSA_KEY, {
@@ -166,7 +152,7 @@ app.route('/api/register').post(register);
 
 app.route('/api/login').post(login);
 
-app.listen(4000, IP, async () => {
+app.listen(4000, async () => {
     console.log("Server launched");
     console.table(users[0]);
     const credentials: Credentials = { email: "belozubov@niuitmo.ru",
