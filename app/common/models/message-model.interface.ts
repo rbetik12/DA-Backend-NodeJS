@@ -3,4 +3,7 @@ export interface MessageModel {
     userID: number;
     sender: string;
     text: string;
+    longitudea: number;
+    altitude: number;
+    coefficient?: number;
 }

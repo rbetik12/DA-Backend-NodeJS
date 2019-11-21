@@ -24,8 +24,6 @@ const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const url = "mongodb://localhost:27017/readr";
 import * as mongo from 'mongodb';
-let x: any;
-
 export async function getUsers(callback: any) {
     await MongoHelper.connect(url);
     return MongoHelper.client.db('readr').collection('users').find({}).toArray((err:any, items: any) =>{
