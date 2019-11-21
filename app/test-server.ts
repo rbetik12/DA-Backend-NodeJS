@@ -25,6 +25,7 @@ const io = require('socket.io')(http);
 const url = "mongodb://localhost:27017/readr";
 import * as mongo from 'mongodb';
 let x: any;
+const IP = '192.168.1.105';
 
 export async function getUsers(callback: any) {
     await MongoHelper.connect(url);
@@ -83,7 +84,7 @@ io.on("connection", async (socket: any) => {
     });
 });
 
-http.listen(5000, '192.168.1.106');
+http.listen(5000, IP);
 
 
 export async function findUser(info: Credentials): Promise<User | null | String> {
@@ -111,6 +112,19 @@ export async function register(req: any, res: any) {
     users.push(user);
 
     res.status(200).json({status: 'fine'});
+}
+
+export async function editProfile(req: any, res: any){
+    const client = await MongoHelper.connect(url);
+    const coll = await client.db('readr').collection('users');
+    const user: User = req.body.user;
+    const id = new mongo.ObjectID(user._id);
+    const userFromDB = await coll.findOneAndUpdate({_id: id}, user);
+    //userFromDB = user;
+
+    console.table(userFromDB);
+
+    res.status(200);
 }
 
 export async function login(req: any, res: any) {
@@ -146,11 +160,13 @@ export async function login(req: any, res: any) {
     }
 }
 
+app.route('/api/profile').post(editProfile);
+
 app.route('/api/register').post(register);
 
 app.route('/api/login').post(login);
 
-app.listen(4000, '192.168.1.106', async () => {
+app.listen(4000, IP, async () => {
     console.log("Server launched");
     console.table(users[0]);
     const credentials: Credentials = { email: "belozubov@niuitmo.ru",
