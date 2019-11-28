@@ -6,6 +6,7 @@ import {User} from './common/models/user.interface';
 import {Credentials} from './common/models/credentials.interface';
 import { MessageModel } from './common/models/message-model.interface';
 import { MongoHelper } from './common/db/mongo.helper';
+import distance from './common/utils/find_distance'; 
 import { resolve } from 'path';
 import { rejects } from 'assert';
 
@@ -37,6 +38,24 @@ export async function getUsers(callback: any) {
         });
 }
 
+function getCoefficient(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+): number {
+    const dist = distance(lat1, lon1, lat2, lon2);
+    if(0 <= dist || dist <= 200){
+        return 6;
+    }else if(201 <= dist || dist <= 2000){
+        return 5;
+    }else if(2001 <= dist || dist <= 10000){
+        return 4;
+    } else {
+        return 1;
+    }
+}
+
 async function use() {
     const client = await MongoHelper.connect(url);
     const coll = await client.db('readr').collection('users').find({}).toArray();
@@ -64,17 +83,24 @@ io.on("connection", async (socket: any) => {
     console.table(mssgs);
     console.log("connection");
     let userID: number;
-    socket.emit("join", mssgs);
-    socket.on("newMessage", (message: MessageModel) => {
+
+    
+
+    socket.on("newMessage", async (message: MessageModel) => {
         coll.insertOne(message);
         console.log("added message");
         console.table(message);
-        messages.push(message);
-        io.emit("newMessage", message);
+        let mssgs: MessageModel[] = await coll.find({}).toArray();
+        mssgs.map( (msg) => {
+            msg.coefficient = getCoefficient(message.latitude, message.longitude, msg.latitude, msg.longitude);
+            return msg;
+        });
+        socket.emit("join", mssgs); /** !!!ARHITECTURE MIGHT BE BROKEN!!! */
+        //io.emit("newMessage", message);
     });
 
-    socket.on("join", (id: number) => {
-        const mssgs = coll.find({}).toArray();
+    socket.on("join", async (id: number) => {
+        const mssgs = await coll.find({}).toArray();
         console.table("get messages");
         userID = id;
         socket.emit("join", mssgs);
