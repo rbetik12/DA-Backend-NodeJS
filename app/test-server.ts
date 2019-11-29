@@ -96,7 +96,7 @@ io.on("connection", async (socket: any) => {
             return msg;
         });
         socket.emit("join", mssgs); /** !!!ARHITECTURE MIGHT BE BROKEN!!! */
-        //io.emit("newMessage", message);
+        io.emit("join", message);
     });
 
     socket.on("join", async (id: number) => {
