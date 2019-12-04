@@ -6,6 +6,7 @@ import {User} from './common/models/user.interface';
 import {Credentials} from './common/models/credentials.interface';
 import { MessageModel } from './common/models/message-model.interface';
 import { MongoHelper } from './common/db/mongo.helper';
+import distance from './common/utils/find_distance'; 
 import { resolve } from 'path';
 import { rejects } from 'assert';
 
@@ -24,9 +25,6 @@ const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const url = "mongodb://localhost:27017/readr";
 import * as mongo from 'mongodb';
-let x: any;
-const IP = '192.168.1.105';
-
 export async function getUsers(callback: any) {
     await MongoHelper.connect(url);
     return MongoHelper.client.db('readr').collection('users').find({}).toArray((err:any, items: any) =>{
@@ -38,6 +36,25 @@ export async function getUsers(callback: any) {
                 callback(items);
             }
         });
+}
+
+function getCoefficient(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+): number {
+    const dist = distance(lat1, lon1, lat2, lon2);
+    console.log(dist);
+    if(0 <= dist && dist <= 200){
+        return 6;
+    }else if(201 <= dist && dist <= 2000){
+        return 5;
+    }else if(2001 <= dist && dist <= 10000){
+        return 4;
+    } else {
+        return 1;
+    }
 }
 
 async function use() {
@@ -67,30 +84,36 @@ io.on("connection", async (socket: any) => {
     console.table(mssgs);
     console.log("connection");
     let userID: number;
-    socket.emit("join", mssgs);
-    socket.on("newMessage", (message: MessageModel) => {
+
+    
+
+    socket.on("newMessage", async (message: MessageModel) => {
         coll.insertOne(message);
         console.log("added message");
         console.table(message);
-        messages.push(message);
-        io.emit("newMessage", message);
+        let mssgs: MessageModel[] = await coll.find({}).toArray();
+        mssgs.map( (msg) => {
+            msg.coefficient = getCoefficient(message.latitude, message.longitude, msg.latitude, msg.longitude);
+            return msg;
+        });
+        socket.emit("join", mssgs); /** !!!ARHITECTURE MIGHT BE BROKEN!!! */
+        io.emit("join", message);
     });
 
-    socket.on("join", (id: number) => {
-        const mssgs = coll.find({}).toArray();
+    socket.on("join", async (id: number) => {
+        const mssgs = await coll.find({}).toArray();
         console.table("get messages");
         userID = id;
         socket.emit("join", mssgs);
     });
 });
 
-http.listen(5000, IP);
+http.listen(5000);
 
 
 export async function findUser(info: Credentials): Promise<User | null | String> {
     const client = await MongoHelper.connect(url);
     const coll: User[] = await client.db('readr').collection('users').find({}).toArray();
-    //console.log(coll);
     for (let user of coll) {
         console.log(user.email, ' ', info.email);
         console.log(user.password, ' ', info.password);
@@ -99,7 +122,6 @@ export async function findUser(info: Credentials): Promise<User | null | String>
             return user;
         }
     }
-    //return "naker idi";
     return null;
 }
 
@@ -120,27 +142,16 @@ export async function editProfile(req: any, res: any){
     const user: User = req.body.user;
     const id = new mongo.ObjectID(user._id);
     const userFromDB = await coll.findOneAndUpdate({_id: id}, user);
-    //userFromDB = user;
-
     console.table(userFromDB);
 
     res.status(200);
 }
 
 export async function login(req: any, res: any) {
-    // let p = false;
-    
     const credentials: Credentials = req.body.loginInfo;
     console.table(credentials);
     const h = 2;
 
-    // for (let user of coll) {
-    //     console.log(user.email, ' ', credentials.email);
-    //     console.log(user.password, ' ', credentials.password);
-    //     if (user.email === credentials.email && user.password === credentials.password) {
-    //         p = true;
-    //     }
-    // }
     const foundUser = (await findUser(credentials).then((res) => { return res}))
     if (foundUser) {
         const jwtToken = jwt.sign({email: credentials.email}, RSA_KEY, {
@@ -166,7 +177,7 @@ app.route('/api/register').post(register);
 
 app.route('/api/login').post(login);
 
-app.listen(4000, IP, async () => {
+app.listen(4000, async () => {
     console.log("Server launched");
     console.table(users[0]);
     const credentials: Credentials = { email: "belozubov@niuitmo.ru",
