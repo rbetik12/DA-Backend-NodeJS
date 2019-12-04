@@ -45,11 +45,12 @@ function getCoefficient(
     lon2: number
 ): number {
     const dist = distance(lat1, lon1, lat2, lon2);
-    if(0 <= dist || dist <= 200){
+    console.log(dist);
+    if(0 <= dist && dist <= 200){
         return 6;
-    }else if(201 <= dist || dist <= 2000){
+    }else if(201 <= dist && dist <= 2000){
         return 5;
-    }else if(2001 <= dist || dist <= 10000){
+    }else if(2001 <= dist && dist <= 10000){
         return 4;
     } else {
         return 1;
