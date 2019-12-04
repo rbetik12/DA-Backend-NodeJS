@@ -84,24 +84,31 @@ io.on("connection", async (socket: any) => {
     console.table(mssgs);
     console.log("connection");
     let userID: number;
-
+    let N = 20;
     
 
     socket.on("newMessage", async (message: MessageModel) => {
-        coll.insertOne(message);
+        let toSkip = await coll.count() - N;
+
+        await coll.insertOne(message);
         console.log("added message");
         console.table(message);
-        let mssgs: MessageModel[] = await coll.find({}).toArray();
+
+        N += 1;
+        let mssgs: MessageModel[] = await coll.find({}).skip(toSkip).toArray();
+        
         mssgs.map( (msg) => {
             msg.coefficient = getCoefficient(message.latitude, message.longitude, msg.latitude, msg.longitude);
             return msg;
         });
         socket.emit("join", mssgs); /** !!!ARHITECTURE MIGHT BE BROKEN!!! */
-        io.emit("join", message);
+        io.emit("join", mssgs);
     });
 
     socket.on("join", async (id: number) => {
-        const mssgs = await coll.find({}).toArray();
+        let toSkip = await coll.count() -N;
+        const mssgs = await coll.find({}).skip(toSkip).toArray();
+        N += 1;
         console.table("get messages");
         userID = id;
         socket.emit("join", mssgs);
