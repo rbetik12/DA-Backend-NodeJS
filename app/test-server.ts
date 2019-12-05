@@ -23,7 +23,7 @@ const io = require('socket.io')(http);
 
 const RSA_KEY = fs.readFileSync('key.pem');
 const url = "mongodb://localhost:27017/readr";
-const IP = "ec2-3-16-157-218.us-east-2.compute.amazonaws.com"; // Don't touch that mazafucka, just change it to localhost
+const IP = "ec2-3-16-157-218.us-east-2.compute.amazonaws.com"; // Don't touch that mazafucka, just change it to localhost or don't, better not to touch that. I fucking swear that I'll kill you if you change that
 
 export async function getUsers(callback: any) {
     await MongoHelper.connect(url);
@@ -63,16 +63,15 @@ io.on("connection", async (socket: any) => {
     const client = await MongoHelper.connect(url);
     const coll = await client.db('readr').collection('messages');
     const mssgs = await coll.find({}).toArray();
-    console.table(mssgs);
-    console.log("connection");
+    console.log("new user joined the chat");
     let N = 20;
 
 
     socket.on("newMessage", async (message: MessageModel) => {
         await coll.insertOne(message);
-        const messagesAmount = await coll.count() - N; 
-        let toSkip = messagesAmount < 0 ? 0 : messagesAmount; 
-        console.log("added message");
+        const messagesAmount = await coll.count() - N;
+        let toSkip = messagesAmount < 0 ? 0 : messagesAmount;
+        console.log("New message from client");
         console.table(message);
 
         N += 1;
@@ -87,11 +86,11 @@ io.on("connection", async (socket: any) => {
     });
 
     socket.on("join", async (id: number) => {
-        const messagesAmount = await coll.count() - N; 
-        let toSkip = messagesAmount < 0 ? 0 : messagesAmount; 
+        const messagesAmount = await coll.count() - N;
+        let toSkip = messagesAmount < 0 ? 0 : messagesAmount;
         const mssgs = await coll.find({}).skip(toSkip).toArray();
         N += 1;
-        console.table("get messages");
+        console.table("Sending all messages to client");
         socket.emit("join", mssgs);
     });
 });
@@ -103,8 +102,6 @@ export async function findUser(info: Credentials): Promise<User | null | String>
     const client = await MongoHelper.connect(url);
     const coll: User[] = await client.db('readr').collection('users').find({}).toArray();
     for (let user of coll) {
-        console.log(user.email, ' ', info.email);
-        console.log(user.password, ' ', info.password);
         if (user.email === info.email && user.password === info.password) {
             user._id = user._id.toString();
             return user;
@@ -159,11 +156,11 @@ export async function login(req: any, res: any) {
     }
 }
 
-async function getUserById(id: string){
+async function getUserById(id: string) {
     const client = await MongoHelper.connect(url);
     const coll = await client.db('readr').collection('users');
-    const userFromDB = await coll.find({_id: new mongo.ObjectId(id)}).toArray();
-    console.log(userFromDB[0]);
+    const userFromDB = await coll.find({ _id: new mongo.ObjectId(id) }).toArray();
+    console.table(userFromDB[0]);
     return userFromDB[0];
 }
 
