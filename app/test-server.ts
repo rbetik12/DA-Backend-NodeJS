@@ -159,7 +159,20 @@ export async function login(req: any, res: any) {
     }
 }
 
+async function getUserById(id: string){
+    const client = await MongoHelper.connect(url);
+    const coll = await client.db('readr').collection('users');
+    const userFromDB = await coll.find({_id: new mongo.ObjectId(id)}).toArray();
+    
+    return userFromDB;
+}
+
 app.route('/api/profile').post(editProfile);
+
+app.route('/api/profile/:userId').get((req, res) => {
+    const user = getUserById(req.params['userId']);
+    res.status(200).json(user);
+});
 
 app.route('/api/register').post(register);
 
