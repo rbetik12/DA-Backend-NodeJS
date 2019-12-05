@@ -2,40 +2,40 @@ import express = require('express');
 import bodyParser = require('body-parser');
 import * as jwt from 'jsonwebtoken';
 import * as fs from 'fs';
-import {User} from './common/models/user.interface';
-import {Credentials} from './common/models/credentials.interface';
+import { User } from './common/models/user.interface';
+import { Credentials } from './common/models/credentials.interface';
 import { MessageModel } from './common/models/message-model.interface';
 import { MongoHelper } from './common/db/mongo.helper';
-import distance from './common/utils/find_distance'; 
-import { resolve } from 'path';
-import { rejects } from 'assert';
-
+import distance from './common/utils/find_distance';
+import * as mongo from 'mongodb';
 
 const app: express.Application = express();
+
 app.use(bodyParser.json());
-app.use(function(req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*"); 
+app.use(function (req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
-  });
-
-const RSA_KEY = fs.readFileSync('key.pem');
+});
 
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
+
+const RSA_KEY = fs.readFileSync('key.pem');
 const url = "mongodb://localhost:27017/readr";
-import * as mongo from 'mongodb';
+const IP = "192.168.1.103"; // Don't touch that mazafucka, just change it to localhost
+
 export async function getUsers(callback: any) {
     await MongoHelper.connect(url);
-    return MongoHelper.client.db('readr').collection('users').find({}).toArray((err:any, items: any) =>{
-            if (err) {
-                express.response.status(500);
-                express.response.end();
-                console.error('Caught error', err);
-            } else {
-                callback(items);
-            }
-        });
+    return MongoHelper.client.db('readr').collection('users').find({}).toArray((err: any, items: any) => {
+        if (err) {
+            express.response.status(500);
+            express.response.end();
+            console.error('Caught error', err);
+        } else {
+            callback(items);
+        }
+    });
 }
 
 function getCoefficient(
@@ -46,36 +46,18 @@ function getCoefficient(
 ): number {
     const dist = distance(lat1, lon1, lat2, lon2);
     console.log(dist);
-    if(0 <= dist && dist <= 200){
+    if (0 <= dist && dist <= 200) {
         return 6;
-    }else if(201 <= dist && dist <= 2000){
+    } else if (201 <= dist && dist <= 2000) {
         return 5;
-    }else if(2001 <= dist && dist <= 10000){
+    } else if (2001 <= dist && dist <= 10000) {
         return 4;
     } else {
         return 1;
     }
 }
 
-async function use() {
-    const client = await MongoHelper.connect(url);
-    const coll = await client.db('readr').collection('users').find({}).toArray();
-    return coll;
-}
-
-let users: User[] = [{
-    _id: "kek",
-    name: 'Vitaliy',
-    about: 'Very interestin young man. Love to love and be loved',
-    email: 'lol@gmail.com',
-    gender: 'M',
-    age: 19,
-    interests: ['kek'],
-    password: '123456'
-}];
-
-const documents: any = {};
-const messages: MessageModel[] = [];
+let users: User[] = [];
 
 io.on("connection", async (socket: any) => {
     const client = await MongoHelper.connect(url);
@@ -83,34 +65,33 @@ io.on("connection", async (socket: any) => {
     const mssgs = await coll.find({}).toArray();
     console.table(mssgs);
     console.log("connection");
-    let userID: number;
     let N = 20;
-    
+
 
     socket.on("newMessage", async (message: MessageModel) => {
-        let toSkip = await coll.count() - N;
-
         await coll.insertOne(message);
+        const messagesAmount = await coll.count() - N; 
+        let toSkip = messagesAmount < 0 ? 0 : messagesAmount; 
         console.log("added message");
         console.table(message);
 
         N += 1;
         let mssgs: MessageModel[] = await coll.find({}).skip(toSkip).toArray();
-        
-        mssgs.map( (msg) => {
+
+        mssgs.map((msg) => {
             msg.coefficient = getCoefficient(message.latitude, message.longitude, msg.latitude, msg.longitude);
             return msg;
         });
-        socket.emit("join", mssgs); /** !!!ARHITECTURE MIGHT BE BROKEN!!! */
+        socket.emit("join", mssgs);
         io.emit("join", mssgs);
     });
 
     socket.on("join", async (id: number) => {
-        let toSkip = await coll.count() -N;
+        const messagesAmount = await coll.count() - N; 
+        let toSkip = messagesAmount < 0 ? 0 : messagesAmount; 
         const mssgs = await coll.find({}).skip(toSkip).toArray();
         N += 1;
         console.table("get messages");
-        userID = id;
         socket.emit("join", mssgs);
     });
 });
@@ -140,15 +121,15 @@ export async function register(req: any, res: any) {
     console.table(user);
     users.push(user);
 
-    res.status(200).json({status: 'fine'});
+    res.status(200).json({ status: 'fine' });
 }
 
-export async function editProfile(req: any, res: any){
+export async function editProfile(req: any, res: any) {
     const client = await MongoHelper.connect(url);
     const coll = await client.db('readr').collection('users');
     const user: User = req.body.user;
     const id = new mongo.ObjectID(user._id);
-    const userFromDB = await coll.findOneAndUpdate({_id: id}, user);
+    const userFromDB = await coll.findOneAndUpdate({ _id: id }, user);
     console.table(userFromDB);
 
     res.status(200);
@@ -159,9 +140,9 @@ export async function login(req: any, res: any) {
     console.table(credentials);
     const h = 2;
 
-    const foundUser = (await findUser(credentials).then((res) => { return res}))
+    const foundUser = (await findUser(credentials).then((res) => { return res }))
     if (foundUser) {
-        const jwtToken = jwt.sign({email: credentials.email}, RSA_KEY, {
+        const jwtToken = jwt.sign({ email: credentials.email }, RSA_KEY, {
             algorithm: 'RS256',
             expiresIn: '2 hours',
             subject: credentials.email,
@@ -169,7 +150,7 @@ export async function login(req: any, res: any) {
         const currentTime = new Date();
         res.status(200).json({
             emailToken: jwtToken,
-            expiresIn: currentTime.setTime(currentTime.getTime() + (h*60*60*1000)),
+            expiresIn: currentTime.setTime(currentTime.getTime() + (h * 60 * 60 * 1000)),
             credentials: foundUser
         });
     }
@@ -186,15 +167,10 @@ app.route('/api/login').post(login);
 
 app.listen(4000, async () => {
     console.log("Server launched");
-    console.table(users[0]);
-    const credentials: Credentials = { email: "belozubov@niuitmo.ru",
-password: "123456"}
-    const d = await findUser(credentials).then((res) => {return res});
-    console.table(d);
     try {
         await MongoHelper.connect(url);
         console.info(`Connected to Mongo!`);
-      } catch (err) {
+    } catch (err) {
         console.error(`Unable to connect to Mongo!`, err);
-      }
+    }
 })
