@@ -23,7 +23,7 @@ const io = require('socket.io')(http);
 
 const RSA_KEY = fs.readFileSync('key.pem');
 const url = "mongodb://localhost:27017/readr";
-const IP = "192.168.1.103"; // Don't touch that mazafucka, just change it to localhost
+const IP = "ec2-3-16-157-218.us-east-2.compute.amazonaws.com"; // Don't touch that mazafucka, just change it to localhost
 
 export async function getUsers(callback: any) {
     await MongoHelper.connect(url);
@@ -96,7 +96,7 @@ io.on("connection", async (socket: any) => {
     });
 });
 
-http.listen(5000);
+http.listen(5000, IP);
 
 
 export async function findUser(info: Credentials): Promise<User | null | String> {
@@ -178,7 +178,7 @@ app.route('/api/register').post(register);
 
 app.route('/api/login').post(login);
 
-app.listen(4000, async () => {
+app.listen(4000, IP, async () => {
     console.log("Server launched");
     try {
         await MongoHelper.connect(url);
