@@ -8,6 +8,7 @@ import { MessageModel } from './common/models/message-model.interface';
 import { MongoHelper } from './common/db/mongo.helper';
 import distance from './common/utils/find_distance';
 import * as mongo from 'mongodb';
+import { Like } from './common/models/like.interface';
 
 const app: express.Application = express();
 
@@ -132,6 +133,37 @@ export async function editProfile(req: any, res: any) {
     res.status(200);
 }
 
+export async function like(req: any, res: any){
+    const client = await MongoHelper.connect(url);
+    const coll = await client.db('readr').collection('users');
+    const reqlike: Like = await req.body.like;
+    const userId = new mongo.ObjectID(reqlike.userId);
+    let userFromDB: User = await coll.findOne({ _id: userId });
+    let likes: string[] = [];
+    let newLikes: string[] = [];
+    let p = false;
+    if(userFromDB.likes && userFromDB.likes.length){
+        likes = userFromDB.likes;
+        for(let lk of likes){
+            newLikes.push(lk);
+            if(lk = reqlike.userWhoGetLiked){
+                p = true;
+                newLikes.pop();
+            }
+        }
+        if(!p){
+            newLikes.push(reqlike.userWhoGetLiked);
+        }
+        likes = newLikes;  
+    }else{
+        likes.push(reqlike.userWhoGetLiked);
+    }
+    userFromDB.likes = likes;
+    const UpUser = userFromDB;
+    const updatedUser = await coll.findOneAndReplace({ _id: userId }, UpUser);
+    res.status(200).json(updatedUser);
+}
+
 export async function login(req: any, res: any) {
     const credentials: Credentials = req.body.loginInfo;
     console.table(credentials);
@@ -170,6 +202,8 @@ app.route('/api/profile/:userId').get(async (req, res) => {
     const user = await getUserById(req.params['userId']);
     res.json(user);
 });
+
+app.route('/api/like').post(like);
 
 app.route('/api/register').post(register);
 

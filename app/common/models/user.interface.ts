@@ -8,6 +8,7 @@ export interface User {
     age: number,
     about: string,
     interests: string[],
+    likes: string[], // short from people He likes
     images?: Photo[],
 
     password?: string,
