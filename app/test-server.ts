@@ -24,7 +24,7 @@ const io = require('socket.io')(http);
 
 const RSA_KEY = fs.readFileSync('key.pem');
 const url = "mongodb://localhost:27017/readr";
-const IP = "ec2-3-16-157-218.us-east-2.compute.amazonaws.com"; // Don't touch that mazafucka, just change it to localhost or don't, better not to touch that. I fucking swear that I'll kill you if you change that
+const IP = "192.168.1.104"; // Don't touch that mazafucka, just change it to localhost or don't, better not to touch that. I fucking swear that I'll kill you if you change that
 
 export async function getUsers(callback: any) {
     await MongoHelper.connect(url);
@@ -133,30 +133,30 @@ export async function editProfile(req: any, res: any) {
     res.status(200);
 }
 
-export async function like(req: any, res: any){
+export async function like(req: any, res: any) {
     const client = await MongoHelper.connect(url);
     const coll = await client.db('readr').collection('users');
-    const reqlike: Like = await req.body.like;
-    const userId = new mongo.ObjectID(reqlike.userId);
+    const reqlike: Like = req.body;
+    const userId = new mongo.ObjectID(reqlike.userWhoGetLiked);
     let userFromDB: User = await coll.findOne({ _id: userId });
     let likes: string[] = [];
     let newLikes: string[] = [];
     let p = false;
-    if(userFromDB.likes && userFromDB.likes.length){
+    if (userFromDB.likes && userFromDB.likes.length) {
         likes = userFromDB.likes;
-        for(let lk of likes){
+        for (let lk of likes) {
             newLikes.push(lk);
-            if(lk = reqlike.userWhoGetLiked){
+            if (lk = reqlike.userId) {
                 p = true;
                 newLikes.pop();
             }
         }
-        if(!p){
-            newLikes.push(reqlike.userWhoGetLiked);
+        if (!p) {
+            newLikes.push(reqlike.userId);
         }
-        likes = newLikes;  
-    }else{
-        likes.push(reqlike.userWhoGetLiked);
+        likes = newLikes;
+    } else {
+        likes.push(reqlike.userId);
     }
     userFromDB.likes = likes;
     const UpUser = userFromDB;
