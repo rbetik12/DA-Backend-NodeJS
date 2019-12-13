@@ -139,23 +139,15 @@ export async function like(req: any, res: any) {
     const reqlike: Like = req.body;
     const userId = new mongo.ObjectID(reqlike.userWhoGetLiked);
     let userFromDB: User = await coll.findOne({ _id: userId });
-    let likes: string[] = [];
-    let newLikes: string[] = [];
-    let p = false;
-    if (userFromDB.likes && userFromDB.likes.length) {
-        likes = userFromDB.likes;
-        for (let lk of likes) {
-            newLikes.push(lk);
-            if (lk = reqlike.userId) {
-                p = true;
-                newLikes.pop();
-            }
+    console.log(reqlike);
+    let likes: string[] = userFromDB.likes || [];
+    let idExist = false;
+    for (let user_id in likes) {
+        if (user_id === reqlike.userId) {
+            idExist = true;
         }
-        if (!p) {
-            newLikes.push(reqlike.userId);
-        }
-        likes = newLikes;
-    } else {
+    }
+    if (!idExist) {
         likes.push(reqlike.userId);
     }
     userFromDB.likes = likes;
