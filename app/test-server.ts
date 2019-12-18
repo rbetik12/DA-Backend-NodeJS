@@ -98,6 +98,15 @@ io.on("connection", async (socket: any) => {
 
 http.listen(5000, IP);
 
+export async function getUserLikes(req: any, res: any) {
+    const user: User = await getUserById(req.params['userId']) || [];
+    const usersID = user.likes;
+    const usersWhoLiked: User[] = [];
+    for (const id of usersID) {
+        usersWhoLiked.push(await getUserById(id));
+    }
+    res.status(200).json(usersWhoLiked);
+}
 
 export async function findUser(info: Credentials): Promise<User | null | String> {
     const client = await MongoHelper.connect(url);
@@ -187,6 +196,8 @@ async function getUserById(id: string) {
     console.table(userFromDB[0]);
     return userFromDB[0];
 }
+
+app.route('/api/user_likes/:userId').get(getUserLikes);
 
 app.route('/api/profile').post(editProfile);
 
