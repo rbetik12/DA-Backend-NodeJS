@@ -1,3 +1,6 @@
+import { ObjectID } from "mongodb";
+
 export interface Photo {
-    data: any;
+    user_id: ObjectID,
+    data: string
 }

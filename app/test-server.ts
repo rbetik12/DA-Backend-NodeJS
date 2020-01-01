@@ -8,10 +8,19 @@ import { MessageModel } from './common/models/message-model.interface';
 import { MongoHelper } from './common/db/mongo.helper';
 import distance from './common/utils/find_distance';
 import * as mongo from 'mongodb';
+import { Photo } from './common/models/photo.iterface';
+const multipart = require('connect-multiparty');
+const multipartMiddleware = multipart({
+    uploadDir: './uploads'
+});
 
 const app: express.Application = express();
 
-app.use(bodyParser.json());
+app.use(bodyParser.json({limit: '50mb'}));
+app.use(bodyParser.urlencoded({
+    extended: true,
+    limit: '50mb'
+}));
 app.use(function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
@@ -164,12 +173,25 @@ async function getUserById(id: string) {
     return userFromDB[0];
 }
 
+async function photoLoader(req: any, res: any) {
+    const client = await MongoHelper.connect(url);
+    const coll = await client.db('readr').collection('photos');
+    const photo: Photo = {
+        user_id: new mongo.ObjectID(req.body.user_id),
+        data: req.body.data
+    }
+    coll.insertOne(photo)
+    res.status(200).json({status: 'kek'})
+}
+
 app.route('/api/profile').post(editProfile);
 
 app.route('/api/profile/:userId').get(async (req, res) => {
     const user = await getUserById(req.params['userId']);
     res.json(user);
 });
+
+app.post('/api/photo/upload', multipartMiddleware, photoLoader);
 
 app.route('/api/register').post(register);
 
