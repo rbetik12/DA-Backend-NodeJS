@@ -8,11 +8,15 @@ import { MessageModel } from './common/models/message-model.interface';
 import { MongoHelper } from './common/db/mongo.helper';
 import distance from './common/utils/find_distance';
 import * as mongo from 'mongodb';
+
 import { Photo } from './common/models/photo.interface';
 const multipart = require('connect-multiparty');
 const multipartMiddleware = multipart({
     uploadDir: './uploads'
 });
+
+import { Like } from './common/models/like.interface';
+
 
 const app: express.Application = express();
 
@@ -106,6 +110,15 @@ io.on("connection", async (socket: any) => {
 
 http.listen(5000, IP);
 
+export async function getUserLikes(req: any, res: any) {
+    const user: User = await getUserById(req.params['userId']) || [];
+    const usersID = user.likes;
+    const usersWhoLiked: User[] = [];
+    for (const id of usersID) {
+        usersWhoLiked.push(await getUserById(id));
+    }
+    res.status(200).json(usersWhoLiked);
+}
 
 export async function findUser(info: Credentials): Promise<User | null | String> {
     const client = await MongoHelper.connect(url);
@@ -135,10 +148,33 @@ export async function editProfile(req: any, res: any) {
     const coll = await client.db('readr').collection('users');
     const user: User = req.body.user;
     const id = new mongo.ObjectID(user._id);
-    const userFromDB = await coll.findOneAndUpdate({ _id: id }, user);
+    const userFromDB = await coll.findOneAndUpdate({ _id: id }, { $set:{"about": user.about, "interests": user.interests}});
     console.table(userFromDB);
 
     res.status(200);
+}
+
+export async function like(req: any, res: any) {
+    const client = await MongoHelper.connect(url);
+    const coll = await client.db('readr').collection('users');
+    const reqlike: Like = req.body;
+    const userId = new mongo.ObjectID(reqlike.userWhoGetLiked);
+    let userFromDB: User = await coll.findOne({ _id: userId });
+    console.log(reqlike);
+    let likes: string[] = userFromDB.likes || [];
+    let idExist = false;
+    for (let user_id in likes) {
+        if (user_id === reqlike.userId) {
+            idExist = true;
+        }
+    }
+    if (!idExist) {
+        likes.push(reqlike.userId);
+    }
+    userFromDB.likes = likes;
+    const UpUser = userFromDB;
+    const updatedUser = await coll.findOneAndReplace({ _id: userId }, UpUser);
+    res.status(200).json(updatedUser);
 }
 
 export async function login(req: any, res: any) {
@@ -196,6 +232,8 @@ async function photoGetter(req: any, res: any) {
     }
     res.status(200).json(fixedPhotos);
 }
+app.route('/api/user_likes/:userId').get(getUserLikes);
+
 
 app.route('/api/profile').post(editProfile);
 
@@ -204,9 +242,13 @@ app.route('/api/profile/:userId').get(async (req, res) => {
     res.json(user);
 });
 
+
 app.post('/api/photo/upload', multipartMiddleware, photoLoader);
 
 app.get('/api/photo/get/:userId', photoGetter);
+
+app.route('/api/like').post(like);
+
 
 app.route('/api/register').post(register);
 
