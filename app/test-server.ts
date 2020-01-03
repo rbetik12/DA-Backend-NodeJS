@@ -8,7 +8,7 @@ import { MessageModel } from './common/models/message-model.interface';
 import { MongoHelper } from './common/db/mongo.helper';
 import distance from './common/utils/find_distance';
 import * as mongo from 'mongodb';
-import { Photo } from './common/models/photo.iterface';
+import { Photo } from './common/models/photo.interface';
 const multipart = require('connect-multiparty');
 const multipartMiddleware = multipart({
     uploadDir: './uploads'
@@ -32,7 +32,7 @@ const io = require('socket.io')(http);
 
 const RSA_KEY = fs.readFileSync('key.pem');
 const url = "mongodb://localhost:27017/readr";
-const IP = "ec2-3-16-157-218.us-east-2.compute.amazonaws.com"; // Don't touch that mazafucka, just change it to localhost or don't, better not to touch that. I fucking swear that I'll kill you if you change that
+const IP = "192.168.1.100"; // Don't touch that mazafucka, just change it to localhost or don't, better not to touch that. I fucking swear that I'll kill you if you change that
 
 export async function getUsers(callback: any) {
     await MongoHelper.connect(url);
@@ -184,6 +184,14 @@ async function photoLoader(req: any, res: any) {
     res.status(200).json({status: 'kek'})
 }
 
+async function photoGetter(req: any, res: any) {
+    const client = await MongoHelper.connect(url);
+    const coll = await client.db('readr').collection('photos');
+    const userId = new mongo.ObjectID(req.params['userId']);
+    const photos: Photo[] = await coll.find({user_id: userId}).toArray();
+    res.status(200).json(photos);
+}
+
 app.route('/api/profile').post(editProfile);
 
 app.route('/api/profile/:userId').get(async (req, res) => {
@@ -192,6 +200,8 @@ app.route('/api/profile/:userId').get(async (req, res) => {
 });
 
 app.post('/api/photo/upload', multipartMiddleware, photoLoader);
+
+app.get('/api/photo/get/:userId', photoGetter);
 
 app.route('/api/register').post(register);
 

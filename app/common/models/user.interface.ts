@@ -1,4 +1,4 @@
-import { Photo } from "./photo.iterface";
+import { Photo } from "./photo.interface";
 
 export interface User {
     _id: string,
