@@ -188,8 +188,13 @@ async function photoGetter(req: any, res: any) {
     const client = await MongoHelper.connect(url);
     const coll = await client.db('readr').collection('photos');
     const userId = new mongo.ObjectID(req.params['userId']);
-    const photos: Photo[] = await coll.find({user_id: userId}).toArray();
-    res.status(200).json(photos);
+    const photos = await coll.find({user_id: userId}).toArray();
+    const fixedPhotos: Photo[] = [];
+    for (const photo of photos) {
+        let fixedPhoto: Photo = {_id: photo._id, user_id: photo.user_id, data: photo.data.data};
+        fixedPhotos.push(fixedPhoto);
+    }
+    res.status(200).json(fixedPhotos);
 }
 
 app.route('/api/profile').post(editProfile);
