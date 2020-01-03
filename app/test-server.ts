@@ -8,6 +8,7 @@ import { MessageModel } from './common/models/message-model.interface';
 import { MongoHelper } from './common/db/mongo.helper';
 import distance from './common/utils/find_distance';
 import * as mongo from 'mongodb';
+import { Like } from './common/models/like.interface';
 
 const app: express.Application = express();
 
@@ -23,7 +24,7 @@ const io = require('socket.io')(http);
 
 const RSA_KEY = fs.readFileSync('key.pem');
 const url = "mongodb://localhost:27017/readr";
-const IP = "ec2-3-16-157-218.us-east-2.compute.amazonaws.com"; // Don't touch that mazafucka, just change it to localhost or don't, better not to touch that. I fucking swear that I'll kill you if you change that
+const IP = "192.168.1.100"; // Don't touch that mazafucka, just change it to localhost or don't, better not to touch that. I fucking swear that I'll kill you if you change that
 
 export async function getUsers(callback: any) {
     await MongoHelper.connect(url);
@@ -97,6 +98,15 @@ io.on("connection", async (socket: any) => {
 
 http.listen(5000, IP);
 
+export async function getUserLikes(req: any, res: any) {
+    const user: User = await getUserById(req.params['userId']) || [];
+    const usersID = user.likes;
+    const usersWhoLiked: User[] = [];
+    for (const id of usersID) {
+        usersWhoLiked.push(await getUserById(id));
+    }
+    res.status(200).json(usersWhoLiked);
+}
 
 export async function findUser(info: Credentials): Promise<User | null | String> {
     const client = await MongoHelper.connect(url);
@@ -126,10 +136,33 @@ export async function editProfile(req: any, res: any) {
     const coll = await client.db('readr').collection('users');
     const user: User = req.body.user;
     const id = new mongo.ObjectID(user._id);
-    const userFromDB = await coll.findOneAndUpdate({ _id: id }, user);
+    const userFromDB = await coll.findOneAndUpdate({ _id: id }, { $set:{"about": user.about, "interests": user.interests}});
     console.table(userFromDB);
 
     res.status(200);
+}
+
+export async function like(req: any, res: any) {
+    const client = await MongoHelper.connect(url);
+    const coll = await client.db('readr').collection('users');
+    const reqlike: Like = req.body;
+    const userId = new mongo.ObjectID(reqlike.userWhoGetLiked);
+    let userFromDB: User = await coll.findOne({ _id: userId });
+    console.log(reqlike);
+    let likes: string[] = userFromDB.likes || [];
+    let idExist = false;
+    for (let user_id in likes) {
+        if (user_id === reqlike.userId) {
+            idExist = true;
+        }
+    }
+    if (!idExist) {
+        likes.push(reqlike.userId);
+    }
+    userFromDB.likes = likes;
+    const UpUser = userFromDB;
+    const updatedUser = await coll.findOneAndReplace({ _id: userId }, UpUser);
+    res.status(200).json(updatedUser);
 }
 
 export async function login(req: any, res: any) {
@@ -164,12 +197,16 @@ async function getUserById(id: string) {
     return userFromDB[0];
 }
 
+app.route('/api/user_likes/:userId').get(getUserLikes);
+
 app.route('/api/profile').post(editProfile);
 
 app.route('/api/profile/:userId').get(async (req, res) => {
     const user = await getUserById(req.params['userId']);
     res.json(user);
 });
+
+app.route('/api/like').post(like);
 
 app.route('/api/register').post(register);
 
