@@ -210,6 +210,7 @@ async function getUserById(id: string) {
 }
 
 async function photoLoader(req: any, res: any) {
+    console.log("User with ID " + req.body.user_id + " uploaded photo");
     const client = await MongoHelper.connect(url);
     const coll = await client.db('readr').collection('photos');
     const photo: Photo = {
@@ -221,6 +222,7 @@ async function photoLoader(req: any, res: any) {
 }
 
 async function photoGetter(req: any, res: any) {
+    console.log("User with ID " + req.body.user_id + " requested photos");
     const client = await MongoHelper.connect(url);
     const coll = await client.db('readr').collection('photos');
     const userId = new mongo.ObjectID(req.params['userId']);
