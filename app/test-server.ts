@@ -36,7 +36,7 @@ const io = require('socket.io')(http);
 
 const RSA_KEY = fs.readFileSync('key.pem');
 const url = "mongodb://localhost:27017/readr";
-const IP = "192.168.1.100"; // Don't touch that mazafucka, just change it to localhost or don't, better not to touch that. I fucking swear that I'll kill you if you change that
+const IP = "192.168.1.105"; // Don't touch that mazafucka, just change it to localhost or don't, better not to touch that. I fucking swear that I'll kill you if you change that
 
 export async function getUsers(callback: any) {
     await MongoHelper.connect(url);
@@ -234,8 +234,19 @@ async function photoGetter(req: any, res: any) {
     }
     res.status(200).json(fixedPhotos);
 }
-app.route('/api/user_likes/:userId').get(getUserLikes);
 
+async function deletePhoto(req: any, res: any) {
+    const client = await MongoHelper.connect(url);
+    const coll = await client.db('readr').collection('photos');
+    const deletionIDs: string[] = req.body.deletionIDs;
+    for (const id of deletionIDs) {
+        await coll.deleteOne({_id: new mongo.ObjectID(id)});
+        console.log("Deleted photo with ID: " + id);
+    }
+    res.status(200).json({status: "OK"});
+}
+
+app.route('/api/user_likes/:userId').get(getUserLikes);
 
 app.route('/api/profile').post(editProfile);
 
@@ -244,13 +255,13 @@ app.route('/api/profile/:userId').get(async (req, res) => {
     res.json(user);
 });
 
-
 app.post('/api/photo/upload', multipartMiddleware, photoLoader);
 
 app.get('/api/photo/get/:userId', photoGetter);
 
-app.route('/api/like').post(like);
+app.route('/api/photo/delete').post(deletePhoto);
 
+app.route('/api/like').post(like);
 
 app.route('/api/register').post(register);
 
