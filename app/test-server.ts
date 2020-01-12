@@ -36,7 +36,7 @@ const io = require('socket.io')(http);
 
 const RSA_KEY = fs.readFileSync('key.pem');
 const url = "mongodb://localhost:27017/readr";
-const IP = "192.168.1.105"; // Don't touch that mazafucka, just change it to localhost or don't, better not to touch that. I fucking swear that I'll kill you if you change that
+const IP = "192.168.1.109"; // Don't touch that mazafucka, just change it to localhost or don't, better not to touch that. I fucking swear that I'll kill you if you change that
 
 export async function getUsers(callback: any) {
     await MongoHelper.connect(url);
@@ -160,16 +160,16 @@ export async function like(req: any, res: any) {
     const reqlike: Like = req.body;
     const userId = new mongo.ObjectID(reqlike.userWhoGetLiked);
     let userFromDB: User = await coll.findOne({ _id: userId });
-    console.log(reqlike);
     let likes: string[] = userFromDB.likes || [];
     let idExist = false;
-    for (let user_id in likes) {
+    for (let user_id of likes) {
         if (user_id === reqlike.userId) {
             idExist = true;
         }
     }
     if (!idExist) {
         likes.push(reqlike.userId);
+        console.log("User with ID: " + reqlike.userId + " liked user with ID: " + reqlike.userWhoGetLiked);
     }
     userFromDB.likes = likes;
     const UpUser = userFromDB;
