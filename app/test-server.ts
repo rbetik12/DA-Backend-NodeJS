@@ -94,7 +94,7 @@ io.on("connection", async (socket: any) => {
             socket.join(roomId);
         }
         else {
-            roomId = (new mongo.ObjectID()).toHexString(); 
+            roomId = (new mongo.ObjectID()).toHexString();
             activeRooms.push({ _id: roomId, person1ID: IDs.senderId, person2ID: IDs.twimcId });
             socket.join(roomId);
         }
@@ -103,7 +103,7 @@ io.on("connection", async (socket: any) => {
 
     socket.on("sendPMessage", (data: any) => {
         console.log(data);
-        io.sockets.in(data.roomId).emit('getMessage', {_id: (new mongo.ObjectID()).toHexString(), text: data.text});
+        io.sockets.in(data.roomId).emit('getMessage', { _id: (new mongo.ObjectID()).toHexString(), text: data.text, sender: data.senderId, userID: data.senderId});
     });
 
     socket.on("newMessage", async (message: MessageModel) => {
