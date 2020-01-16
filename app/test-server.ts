@@ -16,6 +16,7 @@ const multipartMiddleware = multipart({
 });
 
 import { Like } from './common/models/like.interface';
+import { ChatRoom } from './common/models/chatroom.interface';
 
 
 const app: express.Application = express();
@@ -71,14 +72,34 @@ function getCoefficient(
 }
 
 let users: User[] = [];
+const activeRooms: ChatRoom[] = [];
 
 io.on("connection", async (socket: any) => {
     const client = await MongoHelper.connect(url);
     const coll = await client.db('readr').collection('messages');
     const mssgs = await coll.find({}).toArray();
-    console.log("new user joined the chat");
     let N = 20;
 
+    socket.on("subscribe", (IDs: any) => {
+        console.log(IDs);
+        let roomExist = false;
+        let roomId = null;
+        for (const room of activeRooms) {
+            if (room.person1ID === IDs.twimcId || room.person1ID === IDs.senderId && room.person2ID === IDs.twimcId || room.person2ID === IDs.senderId) {
+                roomExist = true;
+                roomId = room._id;
+            }
+        }
+        if (roomExist) {
+            socket.join(roomId);
+        }
+        else {
+            roomId = (new mongo.ObjectID()).toHexString() 
+            activeRooms.push({ _id: roomId, person1ID: IDs.senderId, person2ID: IDs.twimcId });
+            socket.join(roomId);
+        }
+        socket.emit("getRoomId", roomId);
+    });
 
     socket.on("newMessage", async (message: MessageModel) => {
         await coll.insertOne(message);
