@@ -37,7 +37,7 @@ const io = require('socket.io')(http);
 
 const RSA_KEY = fs.readFileSync('key.pem');
 const url = "mongodb://localhost:27017/readr";
-const IP = "192.168.1.109"; // Don't touch that mazafucka, just change it to localhost or don't, better not to touch that. I fucking swear that I'll kill you if you change that
+const IP = "192.168.43.25"; // Don't touch that mazafucka, just change it to localhost or don't, better not to touch that. I fucking swear that I'll kill you if you change that
 
 export async function getUsers(callback: any) {
     await MongoHelper.connect(url);
@@ -103,7 +103,7 @@ io.on("connection", async (socket: any) => {
 
     socket.on("sendPMessage", (data: any) => {
         console.log(data);
-        io.sockets.in(data.roomId).emit('getMessage', { _id: (new mongo.ObjectID()).toHexString(), text: data.text, sender: data.senderId, userID: data.senderId});
+        io.sockets.in(data.roomId).emit('getMessage', { _id: (new mongo.ObjectID()).toHexString(), text: data.text, sender: data.senderName, userID: data.senderId});
     });
 
     socket.on("newMessage", async (message: MessageModel) => {
