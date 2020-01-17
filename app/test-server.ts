@@ -84,6 +84,7 @@ io.on("connection", async (socket: any) => {
         console.log(IDs);
         let roomExist = false;
         let roomId = null;
+        console.log(activeRooms);
         for (const room of activeRooms) {
             if (room.person1ID === IDs.twimcId || room.person1ID === IDs.senderId && room.person2ID === IDs.twimcId || room.person2ID === IDs.senderId) {
                 roomExist = true;
