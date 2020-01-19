@@ -145,8 +145,8 @@ io.on("connection", async (socket: any) => {
 http.listen(5000, IP);
 
 export async function getUserLikes(req: any, res: any) {
-    const user: User = await getUserById(req.params['userId']) || [];
-    const usersID = user.likes;
+    const user: User = await getUserById(req.params['userId']);
+    const usersID = user.likes || [];
     const usersWhoLiked: User[] = [];
     for (const id of usersID) {
         usersWhoLiked.push(await getUserById(id));
@@ -293,7 +293,7 @@ async function getMutualLikes(req: any, res: any) {
     const coll = await client.db('readr').collection('users');
     const userId: string = req.params['userId'];
     const currentUserFromDB: User = await coll.findOne({ _id: new mongo.ObjectID(userId) });
-    const currentUserLikes: string[] = currentUserFromDB.likes;
+    const currentUserLikes: string[] = currentUserFromDB.likes || [];
     const mutualLikes: User[] = [];
     for (const userID of currentUserLikes) {
         const userWhoCouldBeLiked: User = await coll.findOne({ _id: new mongo.ObjectID(userID) });
