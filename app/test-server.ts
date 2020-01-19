@@ -102,16 +102,16 @@ io.on("connection", async (socket: any) => {
             socket.join(roomId);
         }
         socket.emit("getRoomId", roomId);
-        const privateMessages: PrivateMessage[] = await pmColl.find({$or: [{twimcId: IDs.twimcId, senderId: IDs.senderId}, {twimcId: IDs.senderId, senderId: IDs.twimcId}]}).toArray();
+        const privateMessages: PrivateMessage[] = await pmColl.find({ $or: [{ twimcId: IDs.twimcId, senderId: IDs.senderId }, { twimcId: IDs.senderId, senderId: IDs.twimcId }] }).toArray();
         console.log("Private messages :" + privateMessages);
-        socket.emit("getMessagesFromDB", privateMessages);  
+        socket.emit("getMessagesFromDB", privateMessages);
     });
 
     socket.on("sendPMessage", async (data: any) => {
         console.log(data);
         const messageId = new mongo.ObjectID();
-        await pmColl.insertOne({_id: messageId, twimcId: data.twimcId, senderId: data.senderId, text: data.text});
-        io.sockets.in(data.roomId).emit('getMessage', { _id: messageId.toHexString(), text: data.text, senderId: data.senderId});
+        await pmColl.insertOne({ _id: messageId, twimcId: data.twimcId, senderId: data.senderId, text: data.text });
+        io.sockets.in(data.roomId).emit('getMessage', { _id: messageId.toHexString(), text: data.text, senderId: data.senderId });
     });
 
     socket.on("newMessage", async (message: MessageModel) => {
@@ -170,11 +170,18 @@ export async function register(req: any, res: any) {
     const client = await MongoHelper.connect(url);
     const coll = await client.db('readr').collection('users');
     const user: User = req.body.userInfo;
-    coll.insertOne(user);
-    console.table(user);
-    users.push(user);
+    const answerFromDB: User[] = await coll.find({ email: user.email }).limit(1).toArray();
+    console.log(answerFromDB);
+    if (answerFromDB.length > 0) {
+        res.status(409).json({ status: "User already exists" });
+    }
+    else {
+        coll.insertOne(user);
+        console.table(user);
+        users.push(user);
 
-    res.status(200).json({ status: 'fine' });
+        res.status(200).json({ status: "User succefully added" });
+    }
 }
 
 export async function editProfile(req: any, res: any) {
