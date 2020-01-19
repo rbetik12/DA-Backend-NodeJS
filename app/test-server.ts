@@ -124,12 +124,12 @@ io.on("connection", async (socket: any) => {
         N += 1;
         let mssgs: MessageModel[] = await coll.find({}).skip(toSkip).toArray();
 
+        io.emit("join", mssgs);
         mssgs.map((msg) => {
             msg.coefficient = getCoefficient(message.latitude, message.longitude, msg.latitude, msg.longitude);
             return msg;
         });
         socket.emit("join", mssgs);
-        io.emit("join", mssgs);
     });
 
     socket.on("join", async (id: number) => {
