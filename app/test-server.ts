@@ -17,6 +17,7 @@ const multipartMiddleware = multipart({
 
 import { Like } from './common/models/like.interface';
 import { ChatRoom } from './common/models/chatroom.interface';
+import { PrivateMessage } from './common/models/privateMessage.interface';
 
 
 const app: express.Application = express();
@@ -37,7 +38,7 @@ const io = require('socket.io')(http);
 
 const RSA_KEY = fs.readFileSync('key.pem');
 const url = "mongodb://localhost:27017/readr";
-const IP = "192.168.43.25"; // Don't touch that mazafucka, just change it to localhost or don't, better not to touch that. I fucking swear that I'll kill you if you change that
+const IP = "192.168.1.109"; // Don't touch that mazafucka, just change it to localhost or don't, better not to touch that. I fucking swear that I'll kill you if you change that
 
 export async function getUsers(callback: any) {
     await MongoHelper.connect(url);
@@ -77,10 +78,11 @@ const activeRooms: ChatRoom[] = [];
 io.on("connection", async (socket: any) => {
     const client = await MongoHelper.connect(url);
     const coll = await client.db('readr').collection('messages');
+    const pmColl = await client.db('readr').collection('pmMessages');
     const mssgs = await coll.find({}).toArray();
     let N = 20;
 
-    socket.on("subscribe", (IDs: any) => {
+    socket.on("subscribe", async (IDs: any) => {
         console.log(IDs);
         let roomExist = false;
         let roomId = null;
@@ -100,6 +102,9 @@ io.on("connection", async (socket: any) => {
             socket.join(roomId);
         }
         socket.emit("getRoomId", roomId);
+        const privateMessages: PrivateMessage[] = await pmColl.find({twimcId: IDs.twimcId, senderId: IDs.senderId}).toArray();
+        console.log("Private messages :" + privateMessages);
+        socket.emit("getMessagesFromDB", privateMessages);
     });
 
     socket.on("sendPMessage", (data: any) => {
