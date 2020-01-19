@@ -16,11 +16,13 @@ const multipartMiddleware = multipart({
 });
 
 import { Like } from './common/models/like.interface';
+import { ChatRoom } from './common/models/chatroom.interface';
+import { PrivateMessage } from './common/models/privateMessage.interface';
 
 
 const app: express.Application = express();
 
-app.use(bodyParser.json({limit: '50mb'}));
+app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({
     extended: true,
     limit: '50mb'
@@ -71,14 +73,46 @@ function getCoefficient(
 }
 
 let users: User[] = [];
+const activeRooms: ChatRoom[] = [];
 
 io.on("connection", async (socket: any) => {
     const client = await MongoHelper.connect(url);
     const coll = await client.db('readr').collection('messages');
+    const pmColl = await client.db('readr').collection('pmMessages');
     const mssgs = await coll.find({}).toArray();
-    console.log("new user joined the chat");
     let N = 20;
 
+    socket.on("subscribe", async (IDs: any) => {
+        console.log(IDs);
+        let roomExist = false;
+        let roomId = null;
+        console.log(activeRooms);
+        for (const room of activeRooms) {
+            if (room.person1ID === IDs.twimcId || room.person1ID === IDs.senderId && room.person2ID === IDs.twimcId || room.person2ID === IDs.senderId) {
+                roomExist = true;
+                roomId = room._id;
+            }
+        }
+        if (roomExist) {
+            socket.join(roomId);
+        }
+        else {
+            roomId = (new mongo.ObjectID()).toHexString();
+            activeRooms.push({ _id: roomId, person1ID: IDs.senderId, person2ID: IDs.twimcId });
+            socket.join(roomId);
+        }
+        socket.emit("getRoomId", roomId);
+        const privateMessages: PrivateMessage[] = await pmColl.find({$or: [{twimcId: IDs.twimcId, senderId: IDs.senderId}, {twimcId: IDs.senderId, senderId: IDs.twimcId}]}).toArray();
+        console.log("Private messages :" + privateMessages);
+        socket.emit("getMessagesFromDB", privateMessages);  
+    });
+
+    socket.on("sendPMessage", async (data: any) => {
+        console.log(data);
+        const messageId = new mongo.ObjectID();
+        await pmColl.insertOne({_id: messageId, twimcId: data.twimcId, senderId: data.senderId, text: data.text});
+        io.sockets.in(data.roomId).emit('getMessage', { _id: messageId.toHexString(), text: data.text, senderId: data.senderId});
+    });
 
     socket.on("newMessage", async (message: MessageModel) => {
         await coll.insertOne(message);
@@ -148,7 +182,7 @@ export async function editProfile(req: any, res: any) {
     const coll = await client.db('readr').collection('users');
     const user: User = req.body.user;
     const id = new mongo.ObjectID(user._id);
-    const userFromDB = await coll.findOneAndUpdate({ _id: id }, { $set:{"about": user.about, "interests": user.interests}});
+    const userFromDB = await coll.findOneAndUpdate({ _id: id }, { $set: { "about": user.about, "interests": user.interests } });
     console.table(userFromDB);
 
     res.status(200);
@@ -218,18 +252,18 @@ async function photoLoader(req: any, res: any) {
         data: req.body.data
     }
     coll.insertOne(photo)
-    res.status(200).json({status: 'kek'})
+    res.status(200).json({ status: 'kek' })
 }
 
 async function photoGetter(req: any, res: any) {
-    console.log("User with ID " + req.body.user_id + " requested photos");
+    console.log("User with ID " + req.params['userId'] + " requested photos");
     const client = await MongoHelper.connect(url);
     const coll = await client.db('readr').collection('photos');
     const userId = new mongo.ObjectID(req.params['userId']);
-    const photos = await coll.find({user_id: userId}).toArray();
+    const photos = await coll.find({ user_id: userId }).toArray();
     const fixedPhotos: Photo[] = [];
     for (const photo of photos) {
-        let fixedPhoto: Photo = {_id: photo._id, user_id: photo.user_id, data: photo.data.data};
+        let fixedPhoto: Photo = { _id: photo._id, user_id: photo.user_id, data: photo.data.data };
         fixedPhotos.push(fixedPhoto);
     }
     res.status(200).json(fixedPhotos);
@@ -240,10 +274,28 @@ async function deletePhoto(req: any, res: any) {
     const coll = await client.db('readr').collection('photos');
     const deletionIDs: string[] = req.body.deletionIDs;
     for (const id of deletionIDs) {
-        await coll.deleteOne({_id: new mongo.ObjectID(id)});
+        await coll.deleteOne({ _id: new mongo.ObjectID(id) });
         console.log("Deleted photo with ID: " + id);
     }
-    res.status(200).json({status: "OK"});
+    res.status(200).json({ status: "OK" });
+}
+
+async function getMutualLikes(req: any, res: any) {
+    console.log("User with ID: " + req.params['userId'] + " requested mutual likes");
+    const client = await MongoHelper.connect(url);
+    const coll = await client.db('readr').collection('users');
+    const userId: string = req.params['userId'];
+    const currentUserFromDB: User = await coll.findOne({ _id: new mongo.ObjectID(userId) });
+    const currentUserLikes: string[] = currentUserFromDB.likes;
+    const mutualLikes: User[] = [];
+    for (const userID of currentUserLikes) {
+        const userWhoCouldBeLiked: User = await coll.findOne({ _id: new mongo.ObjectID(userID) });
+        for (const likes of userWhoCouldBeLiked.likes) {
+            if (likes === userId) { mutualLikes.push(userWhoCouldBeLiked); }
+        }
+    }
+    console.log(mutualLikes);
+    res.status(200).json(mutualLikes);
 }
 
 app.route('/api/user_likes/:userId').get(getUserLikes);
@@ -266,6 +318,8 @@ app.route('/api/like').post(like);
 app.route('/api/register').post(register);
 
 app.route('/api/login').post(login);
+
+app.route('/api/users/mutual-like/:userId').get(getMutualLikes);
 
 app.listen(4000, IP, async () => {
     console.log("Server launched");
