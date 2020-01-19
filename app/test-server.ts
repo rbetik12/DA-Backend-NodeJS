@@ -38,7 +38,7 @@ const io = require('socket.io')(http);
 
 const RSA_KEY = fs.readFileSync('key.pem');
 const url = "mongodb://localhost:27017/readr";
-const IP = "192.168.1.109"; // Don't touch that mazafucka, just change it to localhost or don't, better not to touch that. I fucking swear that I'll kill you if you change that
+const IP = "ec2-18-222-93-236.us-east-2.compute.amazonaws.com"; // Don't touch that mazafucka, just change it to localhost or don't, better not to touch that. I fucking swear that I'll kill you if you change that
 
 export async function getUsers(callback: any) {
     await MongoHelper.connect(url);
