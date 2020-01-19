@@ -102,7 +102,7 @@ io.on("connection", async (socket: any) => {
             socket.join(roomId);
         }
         socket.emit("getRoomId", roomId);
-        const privateMessages: PrivateMessage[] = await pmColl.find({twimcId: IDs.twimcId, senderId: IDs.senderId}).toArray();
+        const privateMessages: PrivateMessage[] = await pmColl.find({$or: [{twimcId: IDs.twimcId, senderId: IDs.senderId}, {twimcId: IDs.senderId, senderId: IDs.twimcId}]}).toArray();
         console.log("Private messages :" + privateMessages);
         socket.emit("getMessagesFromDB", privateMessages);  
     });
