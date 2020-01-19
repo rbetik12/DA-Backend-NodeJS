@@ -104,12 +104,14 @@ io.on("connection", async (socket: any) => {
         socket.emit("getRoomId", roomId);
         const privateMessages: PrivateMessage[] = await pmColl.find({twimcId: IDs.twimcId, senderId: IDs.senderId}).toArray();
         console.log("Private messages :" + privateMessages);
-        socket.emit("getMessagesFromDB", privateMessages);
+        socket.emit("getMessagesFromDB", privateMessages);  
     });
 
-    socket.on("sendPMessage", (data: any) => {
+    socket.on("sendPMessage", async (data: any) => {
         console.log(data);
-        io.sockets.in(data.roomId).emit('getMessage', { _id: (new mongo.ObjectID()).toHexString(), text: data.text, sender: data.senderName, userID: data.senderId});
+        const messageId = new mongo.ObjectID();
+        await pmColl.insertOne({_id: messageId, twimcId: data.twimcId, senderId: data.senderId, text: data.text});
+        io.sockets.in(data.roomId).emit('getMessage', { _id: messageId.toHexString(), text: data.text, senderId: data.senderId});
     });
 
     socket.on("newMessage", async (message: MessageModel) => {
